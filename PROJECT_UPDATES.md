@@ -1,5 +1,12 @@
 # PROJECT_UPDATES.md — clickscribe 更新日志
 
+## 2026-06-29 — v0.5.0 封装 Mac 本地 App
+
+- `build_app.sh` 生成「步骤记录.app」到 `~/Applications` + 桌面快捷方式
+- 双击自动用项目 venv 启动服务并打开网页；服务已在跑则直接打开网页（避免重复启动）
+- `LSUIElement` 让启动器不占 Dock；进程后台常驻
+- ⚠️ 从 App 启动的 python 与终端启动的是不同进程，首次录制需在「辅助功能」里重新给 python 授权
+
 ## 2026-06-29 — v0.4.0 AI 多接入 + 看全图生成 + 可停止
 
 - **AI 设置面板**：支持三种接入 —— CC Switch 跟随代理（默认免配置）/ 智谱 GLM 直连（填 API Key，glm-4v-plus）/ 自定义 API（base_url + key + model，OpenAI 兼容）
