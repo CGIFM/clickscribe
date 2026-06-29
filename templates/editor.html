@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>clickscribe · 操作文档编辑器</title>
+<style>
+  :root{
+    --blue:#4f8cff; --blue-d:#3a6fd8; --bg:#f4f6fb; --card:#fff;
+    --border:#e3e8ef; --text:#1f2733; --muted:#6b7785; --red:#f53f3f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+       background:var(--bg);color:var(--text);}
+  header{background:linear-gradient(135deg,#4f8cff,#6f6cff);color:#fff;
+         padding:18px 28px;box-shadow:0 2px 10px rgba(0,0,0,.08);position:sticky;top:0;z-index:10;}
+  header .row1{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{margin:0;font-size:20px;font-weight:700;letter-spacing:.5px}
+  header .logo{font-size:22px}
+  header input.title{flex:1;min-width:200px;background:rgba(255,255,255,.18);
+         border:1px solid rgba(255,255,255,.3);color:#fff;font-size:15px;
+         padding:8px 12px;border-radius:8px;outline:none}
+  header input.title::placeholder{color:rgba(255,255,255,.7)}
+  .toolbar{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap}
+  button{cursor:pointer;border:none;border-radius:8px;padding:8px 14px;font-size:14px;
+         font-family:inherit;background:#fff;color:var(--blue-d);font-weight:600;
+         transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  button:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.12)}
+  button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  button.primary{background:#fff;color:var(--blue-d)}
+  button.danger{background:var(--red);color:#fff}
+  button.record{background:var(--red);color:#fff}
+  button.record.recording{background:#fff;color:var(--red);animation:pulse 1.2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+  select{padding:8px 10px;border-radius:8px;border:1px solid var(--border);font-size:14px;background:#fff}
+  .spacer{flex:1}
+  #status{font-size:13px;margin-top:10px;opacity:.95}
+  .warn{background:#fff3cd;color:#856404;padding:10px 28px;font-size:14px;
+        border-bottom:1px solid #ffe69c}
+  main{max-width:860px;margin:24px auto;padding:0 20px}
+  .empty{text-align:center;color:var(--muted);padding:80px 20px;font-size:15px}
+  .empty .big{font-size:48px;margin-bottom:12px}
+  .step{background:var(--card);border:1px solid var(--border);border-radius:14px;
+        margin-bottom:18px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .step-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .num{background:var(--blue);color:#fff;width:28px;height:28px;border-radius:50%;
+       display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+  .step-head input.stitle{flex:1;font-size:15px;font-weight:600;border:none;
+       border-bottom:1px dashed transparent;padding:4px 6px;background:transparent;outline:none;color:var(--text)}
+  .step-head input.stitle:focus{border-bottom-color:var(--blue)}
+  .icon-btn{background:none;box-shadow:none;color:var(--muted);padding:4px 8px;font-size:16px}
+  .icon-btn:hover{color:var(--red);transform:none;box-shadow:none}
+  .step img{max-width:100%;border-radius:8px;border:1px solid var(--border);display:block;margin-bottom:10px}
+  .step textarea{width:100%;border:1px solid var(--border);border-radius:8px;
+       padding:10px;font-size:14px;font-family:inherit;resize:vertical;outline:none;line-height:1.6}
+  .step textarea:focus{border-color:var(--blue)}
+  .badge{font-size:11px;background:#eef2ff;color:var(--blue-d);padding:2px 8px;border-radius:10px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+       background:#1f2733;color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;
+       box-shadow:0 4px 14px rgba(0,0,0,.2);opacity:0;transition:.3s;pointer-events:none;z-index:99}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="row1">
+    <span class="logo">📸</span>
+    <h1>clickscribe</h1>
+    <input class="title" id="title" placeholder="未命名指南…">
+  </div>
+  <div class="toolbar">
+    <select id="sessions"></select>
+    <button class="record" id="btnRecord">⏺ 开始录制</button>
+    <button id="btnAi">✨ AI 生成说明</button>
+    <div class="spacer"></div>
+    <span class="badge" id="countBadge">0 步</span>
+    <button id="btnMd">⬇ Markdown</button>
+    <button id="btnHtml">⬇ HTML</button>
+    <button id="btnJson">⬇ JSON</button>
+    <button class="danger" id="btnDel">🗑 删除</button>
+  </div>
+  <div id="status"></div>
+</header>
+
+<div class="warn" id="warn" style="display:none"></div>
+
+<main>
+  <div class="empty" id="empty">
+    <div class="big">🎬</div>
+    点击左上角「开始录制」，然后去操作你要记录的软件 ——<br>
+    每点一次鼠标，clickscribe 就自动截一张图。完成后回来点「停止录制」。
+  </div>
+  <div id="steps"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let current = null;          // 当前会话数据
+let pollTimer = null;
+
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._t); t._t = setTimeout(()=>t.classList.remove("show"), 2200);
+}
+
+async function api(path, opts){
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error || ("HTTP "+r.status));
+  return j;
+}
+
+function setStatus(html){ $("status").innerHTML = html; }
+
+async function refreshState(){
+  const s = await api("/api/state");
+  // 权限警告
+  $("warn").style.display = s.permission ? "none" : "block";
+  if(!s.permission){
+    $("warn").innerHTML = "⚠️ 未授予「辅助功能」权限，无法监听点击。请到 <b>系统设置 → 隐私与安全性 → 辅助功能</b>，把运行本程序的<b>终端</b>（以及 Python）加入并打开，然后重新点「开始录制」。";
+  }
+  // 会话下拉
+  const sel = $("sessions");
+  sel.innerHTML = "";
+  if(s.sessions.length === 0){
+    const o = document.createElement("option"); o.textContent = "（暂无会话）"; sel.appendChild(o);
+  } else {
+    for(const sid of s.sessions){
+      const o = document.createElement("option"); o.value = sid; o.textContent = sid; sel.appendChild(o);
+    }
+    if(current) sel.value = current.id;
+  }
+  return s;
+}
+
+async function loadSession(sid){
+  current = await api("/api/session/"+sid);
+  render();
+}
+
+function render(){
+  if(!current){
+    $("empty").style.display = "block";
+    $("steps").innerHTML = "";
+    $("title").value = "";
+    $("countBadge").textContent = "0 步";
+    return;
+  }
+  $("empty").style.display = current.steps.length ? "none" : "block";
+  $("title").value = current.title;
+  $("countBadge").textContent = current.steps.length + " 步";
+  const box = $("steps"); box.innerHTML = "";
+  current.steps.forEach((st, i) => {
+    const card = document.createElement("div"); card.className = "step";
+    card.innerHTML = `
+      <div class="step-head">
+        <div class="num">${i+1}</div>
+        <input class="stitle" value="${escapeHtml(st.title||'')}" placeholder="第 ${i+1} 步标题…">
+        <button class="icon-btn" data-act="up" ${i===0?'disabled':''}>↑</button>
+        <button class="icon-btn" data-act="down" ${i===current.steps.length-1?'disabled':''}>↓</button>
+        <button class="icon-btn" data-act="del">✕</button>
+      </div>
+      <img src="/api/image/${current.id}/${encodeURIComponent(st.screenshot)}" loading="lazy">
+      <textarea rows="2" placeholder="这一步的说明…（点上方 ✨ AI 生成说明 可自动填写）">${escapeHtml(st.description||'')}</textarea>`;
+    const titleInp = card.querySelector(".stitle");
+    const descTa = card.querySelector("textarea");
+    titleInp.addEventListener("change", ()=>{ st.title = titleInp.value; save(); });
+    descTa.addEventListener("change", ()=>{ st.description = descTa.value; save(); });
+    card.querySelector('[data-act=up]').onclick = ()=>move(i,-1);
+    card.querySelector('[data-act=down]').onclick = ()=>move(i,1);
+    card.querySelector('[data-act=del]').onclick = ()=>del(i);
+    box.appendChild(card);
+  });
+}
+
+function escapeHtml(s){return s.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+async function save(){
+  if(!current) return;
+  await api("/api/session/"+current.id, {method:"POST", headers:{"Content-Type":"application/json"},
+           body:JSON.stringify({title:current.title, steps:current.steps})});
+}
+function move(i,dir){
+  const j=i+dir; if(j<0||j>=current.steps.length) return;
+  [current.steps[i],current.steps[j]]=[current.steps[j],current.steps[i]];
+  render(); save();
+}
+function del(i){
+  if(!confirm("删除第 "+(i+1)+" 步？")) return;
+  current.steps.splice(i,1); render(); save();
+}
+
+// ---------- 录制 ----------
+$("btnRecord").onclick = async ()=>{
+  if(recorder.running){  // 停止
+    setStatus("正在归档…");
+    const r = await api("/api/stop",{method:"POST"});
+    stopPoll();
+    await refreshState();
+    await loadSession(r.sid);
+    $("sessions").value = r.sid;
+    setStatus(`✅ 已捕获 ${r.sid ? current.steps.length : 0} 步`);
+    updateRecordBtn();
+  } else {  // 开始
+    try{
+      await api("/api/start",{method:"POST"});
+    }catch(e){ toast("❌ "+e.message); return; }
+    setStatus("🔴 录制中… 现在去操作目标软件，每点一次鼠标截一张图。完成后回这里点「停止录制」。");
+    startPoll();
+    updateRecordBtn();
+  }
+};
+function updateRecordBtn(){
+  const b = $("btnRecord");
+  if(recorder.running){ b.textContent="⏹ 停止录制"; b.classList.add("recording"); }
+  else { b.textContent="⏺ 开始录制"; b.classList.remove("recording"); }
+}
+function startPoll(){
+  pollTimer = setInterval(async ()=>{
+    const s = await api("/api/state");
+    setStatus(`🔴 录制中… 已捕获 ${s.buffer} 次点击`);
+    recorder.running = s.recording;
+  }, 1200);
+}
+function stopPoll(){ if(pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
+// recorder 状态镜像（前端感知）
+let recorder = {running:false};
+async function syncRec(){
+  const s = await api("/api/state"); recorder.running = s.recording; updateRecordBtn();
+}
+
+// ---------- 会话切换 ----------
+$("sessions").onchange = (e)=>{ if(e.target.value) loadSession(e.target.value); };
+
+// ---------- 标题 ----------
+$("title").addEventListener("change", async ()=>{
+  if(current){ current.title = $("title").value; await save(); }
+});
+
+// ---------- AI ----------
+$("btnAi").onclick = async ()=>{
+  if(!current || !current.steps.length){ toast("没有步骤"); return; }
+  $("btnAi").disabled = true; setStatus("✨ AI 正在看图写说明…");
+  try{
+    const r = await api(`/api/ai/${current.id}?all=1`,{method:"POST"});
+    const ok = r.results.filter(x=>x.ok).length;
+    const fail = r.results.length - ok;
+    await loadSession(current.id);
+    setStatus(`✅ AI 完成 ${ok} 步` + (fail?`，${fail} 步失败`:""));
+    toast("AI 说明已生成");
+  }catch(e){ toast("❌ "+e.message); setStatus("");}
+  $("btnAi").disabled = false;
+};
+
+// ---------- 导出 ----------
+$("btnMd").onclick  = ()=>current && (location.href=`/api/export/${current.id}/md`);
+$("btnHtml").onclick= ()=>current && (location.href=`/api/export/${current.id}/html`);
+$("btnJson").onclick= ()=>current && (location.href=`/api/export/${current.id}/json`);
+$("btnDel").onclick = async ()=>{
+  if(!current){ toast("没有可删除的会话"); return; }
+  if(!confirm("删除当前会话？此操作不可撤销。")) return;
+  await api("/api/session/"+current.id,{method:"DELETE"});
+  current = null;
+  await refreshState();
+  const sids = $("sessions");
+  if(sids.options.length) loadSession(sids.options[0].value); else render();
+  toast("已删除");
+};
+
+// ---------- 初始化 ----------
+(async ()=>{
+  const s = await refreshState();
+  recorder.running = s.recording;
+  updateRecordBtn();
+  if(s.recording){ setStatus("🔴 录制中…"); startPoll(); }
+  if(s.sessions.length){ await loadSession(s.sessions[0]); }
+})();
+</script>
+</body>
+</html>
