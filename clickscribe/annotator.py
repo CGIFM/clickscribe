@@ -9,8 +9,9 @@ import io
 
 from PIL import Image, ImageDraw
 
-ORANGE = (255, 146, 0)
-ORANGE_EDGE = (230, 105, 0)
+DEEP_ORANGE = (220, 95, 0)       # 外圈深橙描边线
+LIGHT_ORANGE = (255, 170, 90)    # 中间浅橙半透明填充
+GRAY_ORANGE = (190, 145, 105)    # 鼠标尖灰橙小圈
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
@@ -32,10 +33,16 @@ def _draw_cursor(d, cx: int, cy: int, s: int = 1) -> None:
 
 
 def _draw_glow(d, cx: int, cy: int, r: int) -> None:
-    """半透明橙色填充 + 不透明橙色描边。"""
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=ORANGE + (85,))
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=ORANGE_EDGE + (235,),
-              width=max(3, r // 10))
+    """Glitter 风格三层光圈：中间浅橙高透明填充 + 外圈深橙描边线 + 中心灰橙小圈。"""
+    box = [cx - r, cy - r, cx + r, cy + r]
+    # 1. 中间浅橙半透明填充（透明度较高，能透出底图）
+    d.ellipse(box, fill=LIGHT_ORANGE + (72,))
+    # 2. 外圈深橙色描边线
+    d.ellipse(box, outline=DEEP_ORANGE + (255,), width=max(3, r // 8))
+    # 3. 鼠标尖周围的灰橙色小圈（描边环，围绕光标尖端）
+    rs = max(14, r // 2)
+    d.ellipse([cx - rs, cy - rs, cx + rs, cy + rs], outline=GRAY_ORANGE + (215,),
+              width=max(3, r // 12))
 
 
 def render(path: str, x: int, y: int, mode: str = "full",
