@@ -1,7 +1,7 @@
 .venv/
 __pycache__/
 *.pyc
-sessions/_recording/
+sessions/
 .DS_Store
 exports/
 config.json

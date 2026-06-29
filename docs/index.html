@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>clickscribe · macOS 点击截图自动生成操作文档</title>
+<meta name="description" content="开源的 Scribe/Folge 替代品。在 macOS 上点几下鼠标，自动截图、标注点击位置，AI 生成步骤说明，导出 HTML/Markdown。">
+<style>
+  :root{--blue:#4f8cff;--blue-d:#3a6fd8;--orange:#ff9200;--text:#1f2733;--muted:#6b7785;--bg:#f4f6fb;--card:#fff;--border:#e3e8ef}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--text);background:var(--bg);line-height:1.65}
+  a{color:var(--blue-d);text-decoration:none}
+  /* hero */
+  .hero{background:linear-gradient(135deg,#4f8cff,#6f6cff);color:#fff;padding:70px 20px 90px;text-align:center}
+  .hero .logo{font-size:56px;margin-bottom:14px}
+  .hero h1{font-size:48px;font-weight:800;letter-spacing:1px;margin-bottom:14px}
+  .hero .tag{font-size:20px;opacity:.95;max-width:680px;margin:0 auto 28px}
+  .hero .badges{margin-top:18px}
+  .hero .badges img{height:24px;margin:0 3px;vertical-align:middle}
+  .btn{display:inline-block;background:#fff;color:var(--blue-d);font-weight:700;padding:13px 28px;border-radius:10px;margin:0 8px;box-shadow:0 4px 14px rgba(0,0,0,.15);transition:.15s}
+  .btn:hover{transform:translateY(-2px)}
+  .btn.ghost{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.4);box-shadow:none}
+  /* sections */
+  .wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+  section{padding:64px 0}
+  section h2{font-size:32px;text-align:center;margin-bottom:12px}
+  section .lead{text-align:center;color:var(--muted);max-width:640px;margin:0 auto 40px;font-size:17px}
+  /* demo iframe */
+  .demo-frame{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+  .demo-frame iframe{display:block;width:100%;height:560px;border:0;background:#fafafa}
+  .demo-note{text-align:center;color:var(--muted);font-size:14px;margin-top:14px}
+  .demo-note b{color:var(--orange-d,#cc6a00)}
+  /* features */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+  .feat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;transition:.15s}
+  .feat:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.08)}
+  .feat .ic{font-size:34px;margin-bottom:10px}
+  .feat h3{font-size:18px;margin-bottom:6px;color:var(--blue-d)}
+  .feat p{color:var(--muted);font-size:14px}
+  /* screenshot */
+  .shot-wrap{text-align:center}
+  .shot-wrap img{max-width:100%;border-radius:14px;border:1px solid var(--border);box-shadow:0 8px 30px rgba(0,0,0,.1)}
+  /* steps */
+  .steps{counter-reset:s;max-width:680px;margin:0 auto}
+  .step-item{position:relative;padding:18px 18px 18px 64px;background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:14px}
+  .step-item::before{counter-increment:s;content:counter(s);position:absolute;left:18px;top:18px;width:30px;height:30px;background:var(--blue);color:#fff;border-radius:50%;text-align:center;line-height:30px;font-weight:700}
+  .step-item code{background:#eef2ff;padding:2px 7px;border-radius:5px;font-size:14px;color:var(--blue-d)}
+  /* footer */
+  footer{background:#1f2733;color:#a9b2c0;text-align:center;padding:36px 20px}
+  footer a{color:#cdd5e0}
+  @media(max-width:600px){.hero h1{font-size:34px}.hero .tag{font-size:16px}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="logo">📸</div>
+  <h1>clickscribe</h1>
+  <div class="tag">在 macOS 上点几下鼠标，自动生成操作步骤文档。<br>开源、本地、免费 —— Scribe / Folge 的轻量替代品。</div>
+  <a class="btn" href="https://github.com/CGIFM/clickscribe">⭐ GitHub</a>
+  <a class="btn ghost" href="#demo">查看效果 ↓</a>
+  <div class="badges">
+    <img alt="platform" src="https://img.shields.io/badge/platform-macOS-333">
+    <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
+    <img alt="python" src="https://img.shields.io/badge/python-3.14+-yellow">
+    <img alt="stars" src="https://img.shields.io/github/stars/CGIFM/clickscribe?style=social">
+  </div>
+</div>
+
+<section id="demo">
+  <div class="wrap">
+    <h2>效果长什么样</h2>
+    <p class="lead">下面是一份 clickscribe 真实导出的操作指南。注意每一步点击位置的 <b>橙色脉冲圈 + 鼠标光标动效</b> —— 不是写死在图片里，而是 CSS 动画叠加在干净原图上。</p>
+    <div class="demo-frame"><iframe src="guide_demo.html" title="clickscribe 导出效果示例"></iframe></div>
+    <p class="demo-note">↑ 这是真实的导出 HTML，点开 <a href="guide_demo.html" target="_blank">在新标签打开</a> 看更清晰</p>
+  </div>
+</section>
+
+<section style="background:#fff">
+  <div class="wrap">
+    <h2>它能做什么</h2>
+    <p class="lead">把「录制软件操作 → 写教程/SOP/文档」这件事从几小时压缩到几分钟。</p>
+    <div class="grid">
+      <div class="feat"><div class="ic">🖱️</div><h3>全局点击自动截图</h3><p>基于 macOS CGEventTap，每点一次鼠标自动截一张超清 retina 截图，无需手动。</p></div>
+      <div class="feat"><div class="ic">🎯</div><h3>橙色脉冲圈动效</h3><p>点击位置标注鼠标光标 + 呼吸脉冲圈（深橙线/浅橙填充/灰橙小圈），导出 HTML 是动态的。</p></div>
+      <div class="feat"><div class="ic">✨</div><h3>AI 看全图写说明</h3><p>一次把所有截图发给 AI，理解整个流程后为每步生成连贯中文说明。支持 GLM 直连 / 自定义 API。</p></div>
+      <div class="feat"><div class="ic">🖼️</div><h3>超清 + 聚焦裁切</h3><p>保留 retina 原画质，编辑器一键切换「全屏 / 聚焦裁切」视图，看清细节。</p></div>
+      <div class="feat"><div class="ic">📐</div><h3>步骤编辑器</h3><p>浏览器里改标题/说明、多选/全选、批量删除、上下排序、一键清空 AI 说明。</p></div>
+      <div class="feat"><div class="ic">📤</div><h3>多格式导出</h3><p>HTML（内嵌动效）、Markdown（含图片）、JSON。一份操作指南随时分享。</p></div>
+      <div class="feat"><div class="ic">🔒</div><h3>完全本地</h3><p>截图、会话、配置都在本机，不上云。AI 可走你自己的 key，零费用、零外泄。</p></div>
+      <div class="feat"><div class="ic">📦</div><h3>一键封装 Mac App</h3><p>build_app.sh 生成「步骤记录.app」，桌面双击即用，无需开终端。</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>录制即所见</h2>
+    <p class="lead">AI 生成的步骤说明会结合整个流程的上下文，每一步都交代清楚「这步做了什么」。</p>
+    <div class="shot-wrap">
+      <img src="screenshots/demo_source.png" alt="clickscribe 录制的操作界面示意" style="max-width:760px">
+    </div>
+  </div>
+</section>
+
+<section style="background:#fff">
+  <div class="wrap">
+    <h2>三步开始用</h2>
+    <div class="steps">
+      <div class="step-item"><b>克隆并启动</b><br><br>把下面命令在终端跑一次，自动建虚拟环境、装依赖、开服务：<br><code>git clone https://github.com/CGIFM/clickscribe.git</code><br><code>cd clickscribe &amp;&amp; ./run.sh</code></div>
+      <div class="step-item"><b>录制操作</b><br>浏览器打开 <code>http://127.0.0.1:5577</code>，点「开始录制」，然后去你要记录的软件里正常操作 —— 每点一次鼠标，clickscribe 自动截一张图。完成回网页点「停止录制」。</div>
+      <div class="step-item"><b>AI 生成 + 导出</b><br>点「✨ AI 生成说明」让模型看完全部截图写步骤说明，编辑/排序后，点「⬇ HTML」或「⬇ Markdown」导出。搞定！</div>
+    </div>
+    <p style="text-align:center;margin-top:24px;color:var(--muted)">想做成桌面 App 双击启动？<code>bash build_app.sh</code> 搞定。</p>
+  </div>
+</section>
+
+<footer>
+  <p><a href="https://github.com/CGIFM/clickscribe">github.com/CGIFM/clickscribe</a> · MIT License · 用 ❤️ 在 macOS 上打造</p>
+</footer>
+
+</body>
+</html>
