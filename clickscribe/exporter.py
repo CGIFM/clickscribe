@@ -72,7 +72,7 @@ def to_html(session: dict, out_path: str) -> str:
         "animation:cs-pulse 1.6s ease-out infinite}",
         ".marker .pulse::after{content:'';position:absolute;inset:31%;border-radius:50%;",
         "border:3px solid rgba(190,145,105,.92)}",
-        ".marker .cur{position:absolute;left:0;top:0;width:26px;height:38px;",
+        ".marker .cur{position:absolute;left:0;top:0;width:18px;height:28px;",
         "filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));pointer-events:none}",
         "@keyframes cs-pulse{0%{box-shadow:0 0 0 0 rgba(220,95,0,.55)}",
         "70%{box-shadow:0 0 0 26px rgba(220,95,0,0)}100%{box-shadow:0 0 0 0 rgba(220,95,0,0)}}",
