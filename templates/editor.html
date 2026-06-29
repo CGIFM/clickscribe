@@ -105,6 +105,7 @@
     <button id="btnMd">⬇ MD</button>
     <button id="btnHtml">⬇ HTML</button>
     <button id="btnJson">⬇ JSON</button>
+    <button id="btnShutdown" class="ghost">⏻ 关闭服务</button>
     <button class="record" id="btnDel">🗑 删会话</button>
   </div>
   <div id="progress"><div class="progbar"><div id="progFill"></div></div><span id="progText"></span></div>
@@ -412,6 +413,11 @@ $("btnView").onclick = ()=>{
 $("btnMd").onclick  = ()=>current && (location.href=`/api/export/${current.id}/md`);
 $("btnHtml").onclick= ()=>current && (location.href=`/api/export/${current.id}/html`);
 $("btnJson").onclick= ()=>current && (location.href=`/api/export/${current.id}/json`);
+$("btnShutdown").onclick = async ()=>{
+  if(!confirm("关闭步骤记录服务？关闭后需要重新双击 App 启动。")) return;
+  try{ await api("/api/shutdown", {method:"POST"}); }catch(_){ }
+  document.body.innerHTML = '<div style="font-family:-apple-system,PingFang SC,sans-serif;text-align:center;margin-top:20vh;color:#333"><h1>步骤记录已关闭</h1><p>需要再次使用时，双击桌面的「步骤记录.app」即可。</p></div>';
+};
 $("btnDel").onclick = async ()=>{
   if(!current){ toast("没有可删除的会话"); return; }
   if(!confirm("删除当前会话？不可撤销。")) return;

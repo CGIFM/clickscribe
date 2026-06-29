@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 import zipfile
 
@@ -19,6 +20,27 @@ from clickscribe.recorder import Recorder
 app = Flask(__name__)
 recorder = Recorder()
 PORT = 5577
+
+# 空闲超时自动关闭（默认不常驻：30 分钟无请求则退出）
+LAST_ACTIVE = time.time()
+IDLE_TIMEOUT = 1800
+
+
+@app.before_request
+def _touch_active():
+    global LAST_ACTIVE
+    LAST_ACTIVE = time.time()
+
+
+def _idle_watcher():
+    while True:
+        time.sleep(60)
+        if time.time() - LAST_ACTIVE > IDLE_TIMEOUT:
+            print("[clickscribe] 空闲超时，自动关闭服务")
+            os._exit(0)
+
+
+threading.Thread(target=_idle_watcher, daemon=True).start()
 
 
 def _load_or_404(sid: str) -> dict:
@@ -230,6 +252,18 @@ def export(sid, fmt):
         return send_file(path, as_attachment=True, download_name=f"{safe}.json")
 
     abort(400)
+
+
+# ---------------------------------------------------------------- 关闭服务
+@app.route("/api/shutdown", methods=["POST"])
+def shutdown():
+    def _stop():
+        time.sleep(0.4)  # 让响应先返回
+        print("[clickscribe] 收到关闭请求，退出服务")
+        os._exit(0)
+
+    threading.Thread(target=_stop, daemon=True).start()
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

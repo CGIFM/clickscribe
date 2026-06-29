@@ -63,14 +63,17 @@ def to_html(session: dict, out_path: str) -> str:
         ".desc{color:#444;line-height:1.7;margin-top:12px}",
         ".num{display:inline-block;background:#ff9200;color:#fff;width:26px;height:26px;border-radius:50%;",
         "text-align:center;line-height:26px;margin-right:8px;font-size:14px}",
-        # 干净原图 + 动效圈
+        # 干净原图 + 鼠标光标 + 脉冲圈
         ".shot{position:relative;display:block;width:100%;margin:6px 0}",
         ".shot img{display:block;width:100%;border-radius:8px;border:1px solid #e3e8ef}",
-        ".marker{position:absolute;transform:translate(-50%,-50%);width:62px;height:62px;border-radius:50%;",
-        "border:4px solid #dc5f00;background:rgba(255,170,90,.30);box-sizing:border-box;",
+        ".marker{position:absolute;width:0;height:0}",
+        ".marker .pulse{position:absolute;transform:translate(-50%,-50%);width:62px;height:62px;",
+        "border-radius:50%;border:4px solid #dc5f00;background:rgba(255,170,90,.28);box-sizing:border-box;",
         "animation:cs-pulse 1.6s ease-out infinite}",
-        ".marker::before{content:'';position:absolute;inset:31%;border-radius:50%;",
-        "border:3px solid rgba(190,145,105,.92);background:rgba(190,145,105,.25)}",
+        ".marker .pulse::after{content:'';position:absolute;inset:31%;border-radius:50%;",
+        "border:3px solid rgba(190,145,105,.92)}",
+        ".marker .cur{position:absolute;left:0;top:0;width:26px;height:38px;",
+        "filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));pointer-events:none}",
         "@keyframes cs-pulse{0%{box-shadow:0 0 0 0 rgba(220,95,0,.55)}",
         "70%{box-shadow:0 0 0 26px rgba(220,95,0,0)}100%{box-shadow:0 0 0 0 rgba(220,95,0,0)}}",
         "</style></head><body>",
@@ -90,8 +93,12 @@ def to_html(session: dict, out_path: str) -> str:
             shot_html = (
                 f"<div class='shot'>"
                 f"<img src='data:image/jpeg;base64,{b64}' alt='第{i}步截图'>"
-                f"<span class='marker' style='left:{px:.2f}%;top:{py:.2f}%'></span>"
-                f"</div>"
+                f"<div class='marker' style='left:{px:.2f}%;top:{py:.2f}%'>"
+                f"<span class='pulse'></span>"
+                f"<svg class='cur' viewBox='0 0 12 20' xmlns='http://www.w3.org/2000/svg'>"
+                f"<path d='M0,0 L0,17 L4,13 L7,19 L9,18 L6,11 L11,11 Z' "
+                f"fill='#ffffff' stroke='#111' stroke-width='1' stroke-linejoin='round'/></svg>"
+                f"</div></div>"
             )
         parts.append(
             f"<div class='step'><h2><span class='num'>{i}</span>{title}</h2>"
