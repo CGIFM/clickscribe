@@ -5,11 +5,13 @@
 """
 from __future__ import annotations
 
+import json
 import os
 import time
 import zipfile
 
-from flask import Flask, abort, jsonify, render_template, request, send_file
+from flask import (Flask, Response, abort, jsonify, render_template,
+                   request, send_file, stream_with_context)
 
 from clickscribe import ai_writer, annotator, exporter, store
 from clickscribe.recorder import Recorder
@@ -125,28 +127,43 @@ def image(sid, fname):
     if mode not in ("full", "crop"):
         mode = "full"
     return send_file(
-        annotator.render(path, step["x"], step["y"], mode=mode),
+        annotator.render(path, step["x"], step["y"],
+                         scale=step.get("scale", 1.0), mode=mode),
         mimetype="image/jpeg",
     )
 
 
-# ---------------------------------------------------------------- AI 说明
+# ---------------------------------------------------------------- AI 说明（流式进度）
+def _sse(d: dict) -> str:
+    return "data: " + json.dumps(d, ensure_ascii=False) + "\n\n"
+
+
 @app.route("/api/ai/<sid>", methods=["POST"])
 def ai_all(sid):
+    """流式生成步骤说明：每步 yield 进度事件，前端实时显示进度条。"""
     data = _load_or_404(sid)
-    only_missing = request.args.get("all") != "1"
-    results = []
-    for i, step in enumerate(data["steps"]):
-        if only_missing and step.get("description"):
-            continue
-        path = store.image_path(sid, step["screenshot"])
-        try:
-            step["description"] = ai_writer.describe(path)
-            results.append({"index": i, "ok": True})
-        except Exception as exc:  # 某一步失败不阻断其余
-            results.append({"index": i, "ok": False, "error": str(exc)})
-    store.save(sid, data)
-    return jsonify({"ok": True, "results": results})
+    force_all = request.args.get("all") == "1"
+
+    def gen():
+        total = len(data["steps"])
+        yield _sse({"type": "start", "total": total, "done": 0})
+        for i, step in enumerate(data["steps"]):
+            if not force_all and step.get("description"):
+                yield _sse({"type": "skip", "index": i, "done": i + 1, "total": total})
+                continue
+            path = store.image_path(sid, step["screenshot"])
+            try:
+                step["description"] = ai_writer.describe(path)
+                store.save(sid, data)
+                yield _sse({"type": "done", "index": i, "done": i + 1,
+                            "total": total, "description": step["description"]})
+            except Exception as exc:  # 某一步失败不阻断其余
+                yield _sse({"type": "error", "index": i, "done": i + 1,
+                            "total": total, "error": str(exc)})
+        yield _sse({"type": "finish", "total": total, "done": total})
+
+    return Response(stream_with_context(gen()), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 # ---------------------------------------------------------------- 导出

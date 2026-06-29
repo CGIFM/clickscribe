@@ -30,27 +30,19 @@ from Quartz import (  # type: ignore
 RECORDING_DIR = os.path.join("sessions", "_recording")
 
 
-def _screenshot(path: str) -> None:
-    """静音截取整屏，并缩放到屏幕逻辑 points（与 Quartz 鼠标坐标对齐）。
+def _screenshot(path: str) -> float:
+    """静音截取整屏到 path，并返回 retina scale。
 
-    retina 屏 screencapture 默认输出 2x 像素，而 CGEventGetLocation 返回
-    1x points；不缩放会导致标注画偏。
+    为保证画质，保留 screencapture 的原始 retina 像素图（不缩放）。
+    CGEventGetLocation 返回逻辑 points，后续标注时用 scale 映射到像素坐标。
     """
-    tmp = path + ".raw"
-    subprocess.run(["screencapture", "-x", tmp], check=True)
+    subprocess.run(["screencapture", "-x", path], check=True)
     try:
-        from PIL import Image
         from AppKit import NSScreen
 
-        img = Image.open(tmp)
-        factor = NSScreen.mainScreen().backingScaleFactor()
-        if factor and factor != 1:
-            w, h = img.size
-            img = img.resize((int(w / factor), int(h / factor)), Image.LANCZOS)
-        img.save(path)
-        os.remove(tmp)
+        return float(NSScreen.mainScreen().backingScaleFactor() or 1.0)
     except Exception:
-        os.replace(tmp, path)
+        return 1.0
 
 
 class Recorder:
@@ -84,7 +76,7 @@ class Recorder:
             fname = f"img_{idx:03d}_{time.strftime('%H%M%S')}.png"
             path = os.path.join(RECORDING_DIR, fname)
             try:
-                _screenshot(path)
+                scale = _screenshot(path)
             except Exception as exc:  # 截图失败不阻断录制
                 print(f"[clickscribe] 截图失败: {exc}")
                 return event
@@ -93,6 +85,7 @@ class Recorder:
                 "y": y,
                 "screenshot": fname,
                 "ts": time.time(),
+                "scale": scale,
                 "title": "",
                 "description": "",
             }

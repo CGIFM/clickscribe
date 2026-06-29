@@ -45,17 +45,24 @@ def _draw_glow(d, cx: int, cy: int, r: int) -> None:
               width=max(3, r // 12))
 
 
-def render(path: str, x: int, y: int, mode: str = "full",
-           max_side: int = 1700, crop_w: int = 880, crop_h: int = 560) -> io.BytesIO:
-    """渲染标注后的图片，返回 JPEG BytesIO。"""
+def render(path: str, x: float, y: float, scale: float = 1.0, mode: str = "full",
+           max_side: int = 2880, crop_w: int = 1100, crop_h: int = 700) -> io.BytesIO:
+    """渲染标注后的图片，返回 JPEG BytesIO。
+
+    x, y 是 Quartz 逻辑 points；scale（retina backingScaleFactor）把它们
+    映射到截图的像素坐标。为保画质，只有超过 max_side 才缩放。
+    """
     img = Image.open(path).convert("RGBA")
+    # 逻辑点 → 像素坐标
+    x = int(round(x * scale))
+    y = int(round(y * scale))
     W, H = img.size
 
-    # 大图缩放（视网膜整屏往往 3K+，缩小省内存）
+    # 超大图才缩放（retina 整屏 ~3K，2880 基本保留原画质）
     if max(W, H) > max_side:
         s = max_side / max(W, H)
         img = img.resize((int(W * s), int(H * s)), Image.LANCZOS)
-        x, y = int(x * s), int(y * s)
+        x, y = int(round(x * s)), int(round(y * s))
         W, H = img.size
 
     if mode == "crop":
@@ -80,6 +87,19 @@ def render(path: str, x: int, y: int, mode: str = "full",
 
     out = Image.alpha_composite(img, overlay).convert("RGB")
     buf = io.BytesIO()
-    out.save(buf, "JPEG", quality=85)
+    out.save(buf, "JPEG", quality=95)
+    buf.seek(0)
+    return buf
+
+
+def raw_jpeg(path: str, max_side: int = 2880, quality: int = 95) -> io.BytesIO:
+    """导出用：返回干净原图（无标注），高清 JPEG。"""
+    img = Image.open(path).convert("RGB")
+    W, H = img.size
+    if max(W, H) > max_side:
+        s = max_side / max(W, H)
+        img = img.resize((int(W * s), int(H * s)), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=quality)
     buf.seek(0)
     return buf
