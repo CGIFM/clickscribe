@@ -19,6 +19,14 @@ recorder = Recorder()
 PORT = 5577
 
 
+def _load_or_404(sid: str) -> dict:
+    """加载会话；不存在时返回 404，避免抛异常导致 500 + 前端破图。"""
+    try:
+        return store.load(sid)
+    except FileNotFoundError:
+        abort(404)
+
+
 # ---------------------------------------------------------------- 视图
 @app.route("/")
 def index():
@@ -87,7 +95,7 @@ def get_session(sid):
 
 @app.route("/api/session/<sid>", methods=["POST"])
 def update_session(sid):
-    data = store.load(sid)
+    data = _load_or_404(sid)
     body = request.get_json(force=True) or {}
     if "title" in body:
         data["title"] = body["title"]
@@ -106,7 +114,7 @@ def delete_session(sid):
 # ---------------------------------------------------------------- 图片（橙色光圈 + 鼠标，支持全屏 / 聚焦裁切）
 @app.route("/api/image/<sid>/<fname>")
 def image(sid, fname):
-    data = store.load(sid)
+    data = _load_or_404(sid)
     step = next((s for s in data["steps"] if s["screenshot"] == fname), None)
     path = store.image_path(sid, fname)
     if not os.path.exists(path):
@@ -125,7 +133,7 @@ def image(sid, fname):
 # ---------------------------------------------------------------- AI 说明
 @app.route("/api/ai/<sid>", methods=["POST"])
 def ai_all(sid):
-    data = store.load(sid)
+    data = _load_or_404(sid)
     only_missing = request.args.get("all") != "1"
     results = []
     for i, step in enumerate(data["steps"]):
@@ -144,7 +152,7 @@ def ai_all(sid):
 # ---------------------------------------------------------------- 导出
 @app.route("/api/export/<sid>/<fmt>")
 def export(sid, fmt):
-    data = store.load(sid)
+    data = _load_or_404(sid)
     os.makedirs("exports", exist_ok=True)
     safe = "".join(c for c in data["title"] if c not in "/\\\n") or sid
 

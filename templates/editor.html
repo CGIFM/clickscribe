@@ -109,7 +109,7 @@ function toast(msg){
 
 async function api(path, opts){
   const r = await fetch(path, opts);
-  const j = await r.json().catch(()=>({}));
+  const j = await r.json().catch(()=>({error: r.statusText || ("HTTP "+r.status)}));
   if(!r.ok) throw new Error(j.error || ("HTTP "+r.status));
   return j;
 }
@@ -138,8 +138,15 @@ async function refreshState(){
 }
 
 async function loadSession(sid){
-  current = await api("/api/session/"+sid);
-  render();
+  try{
+    current = await api("/api/session/"+sid);
+    render();
+  }catch(e){
+    current = null;
+    render();
+    toast("⚠️ 会话不存在或已删除，请重新录制");
+    await refreshState();
+  }
 }
 
 function render(){
@@ -284,7 +291,7 @@ $("btnDel").onclick = async ()=>{
   recorder.running = s.recording;
   updateRecordBtn();
   if(s.recording){ setStatus("🔴 录制中…"); startPoll(); }
-  if(s.sessions.length){ await loadSession(s.sessions[0]); }
+  if(s.sessions.length){ await loadSession(s.sessions[0]); } else { render(); }
 })();
 </script>
 </body>
