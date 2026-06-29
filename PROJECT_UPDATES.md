@@ -1,5 +1,13 @@
 # PROJECT_UPDATES.md — clickscribe 更新日志
 
+## 2026-06-29 — v0.4.0 AI 多接入 + 看全图生成 + 可停止
+
+- **AI 设置面板**：支持三种接入 —— CC Switch 跟随代理（默认免配置）/ 智谱 GLM 直连（填 API Key，glm-4v-plus）/ 自定义 API（base_url + key + model，OpenAI 兼容）
+- **看全图生成**：改成一次把所有截图发给模型，理解整个流程上下文后为每步生成连贯说明（替代之前的逐步独立看）
+- **可停止**：AI 生成中按钮变「⏹ 停止生成」，AbortController 中断；后端检测客户端断开不保存部分结果
+- **配置安全**：`config.json` 存配置并 gitignore；接口返回 key 脱敏
+- 后端 `/api/config` GET/POST + `/api/ai` 改看全图 SSE（start/done/error）
+
 ## 2026-06-29 — v0.3.0 超清 + 动效 + 进度条 + 多选（大版本）
 
 - **超清截图**：recorder 不再缩放，存 retina 原图（3024×1964），step 记录 `scale`；annotator 用 scale 把逻辑点映射到像素，quality 95、max_side 2880。标注图 1512 → **2880 宽，翻倍清晰**

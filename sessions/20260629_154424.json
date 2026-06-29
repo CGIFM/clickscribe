@@ -4,7 +4,7 @@
   "created": 1782719064.4685,
   "steps": [
     {
-      "description": "点击左上角的文件菜单",
+      "description": "点击右上角的关闭按钮",
       "screenshot": "img_002_154250.png",
       "title": "",
       "ts": 1782718970.783556,
@@ -12,7 +12,7 @@
       "y": 63
     },
     {
-      "description": "点击左上角的返回箭头",
+      "description": "点击左侧导航栏中的文件选项",
       "screenshot": "img_003_154251.png",
       "title": "",
       "ts": 1782718971.879238,
@@ -36,7 +36,7 @@
       "y": 619
     },
     {
-      "description": "点击左侧导航栏中的文件选项",
+      "description": "点击左上角的文件菜单",
       "screenshot": "img_006_154256.png",
       "title": "",
       "ts": 1782718976.632957,
@@ -52,7 +52,7 @@
       "y": 567
     },
     {
-      "description": "点击左上角的文件菜单",
+      "description": "点击右上角的关闭按钮",
       "screenshot": "img_012_154320.png",
       "title": "",
       "ts": 1782719001.0852349,
@@ -60,7 +60,7 @@
       "y": 947
     },
     {
-      "description": "点击左上角的返回箭头",
+      "description": "点击左上角的文件菜单",
       "screenshot": "img_013_154323.png",
       "title": "",
       "ts": 1782719004.0463748,
@@ -76,7 +76,7 @@
       "y": 301
     },
     {
-      "description": "点击左上角的返回按钮",
+      "description": "点击左侧导航栏中的文件夹图标",
       "screenshot": "img_017_154335.png",
       "title": "",
       "ts": 1782719016.160599,
@@ -84,7 +84,7 @@
       "y": 965
     },
     {
-      "description": "点击左上角的返回按钮",
+      "description": "点击左侧导航栏中的文件夹图标",
       "screenshot": "img_019_154339.png",
       "title": "",
       "ts": 1782719020.292444,
@@ -92,7 +92,7 @@
       "y": 698
     },
     {
-      "description": "点击左上角的返回箭头",
+      "description": "点击左侧导航栏中的文件夹图标",
       "screenshot": "img_020_154342.png",
       "title": "",
       "ts": 1782719022.406584,
@@ -100,7 +100,7 @@
       "y": 704
     },
     {
-      "description": "点击左上角的文件菜单",
+      "description": "点击左上角的返回箭头按钮",
       "screenshot": "img_021_154345.png",
       "title": "",
       "ts": 1782719025.829671,
@@ -108,7 +108,7 @@
       "y": 338
     },
     {
-      "description": "点击右上角的关闭按钮",
+      "description": "点击左侧导航栏中的文件夹图标",
       "screenshot": "img_022_154347.png",
       "title": "",
       "ts": 1782719027.6833222,
@@ -116,7 +116,7 @@
       "y": 712
     },
     {
-      "description": "点击左上角的文件菜单",
+      "description": "点击左上角的返回箭头",
       "screenshot": "img_023_154349.png",
       "title": "",
       "ts": 1782719029.7265291,

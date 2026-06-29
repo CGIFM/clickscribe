@@ -4,3 +4,4 @@ __pycache__/
 sessions/_recording/
 .DS_Store
 exports/
+config.json

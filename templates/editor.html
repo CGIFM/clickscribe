@@ -66,6 +66,22 @@
        background:#1f2733;color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;
        box-shadow:0 4px 14px rgba(0,0,0,.2);opacity:0;transition:.3s;pointer-events:none;z-index:99}
   .toast.show{opacity:1}
+  /* 设置模态 */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;
+         justify-content:center;z-index:100}
+  .modal-card{background:#fff;border-radius:14px;padding:24px;width:min(460px,92vw);
+              max-height:88vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  .modal-card h3{margin-top:0;color:var(--blue-d)}
+  .modal-card label{display:block;font-size:13px;font-weight:600;margin:12px 0 4px;color:var(--text)}
+  .modal-card label small{font-weight:400;color:var(--muted)}
+  .modal-card select,.modal-card input{width:100%;padding:8px 10px;border:1px solid var(--border);
+              border-radius:8px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box}
+  .modal-card input:focus,.modal-card select:focus{border-color:var(--blue)}
+  .modal-card .hint{color:var(--muted);font-size:12px}
+  .modal-actions{display:flex;gap:8px;margin-top:18px}
+  .modal-actions button{flex:1}
+  .modal-note{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.5}
+  .cfg-block{margin-top:6px}
 </style>
 </head>
 <body>
@@ -80,6 +96,7 @@
     <button class="record" id="btnRecord">⏺ 开始录制</button>
     <button id="btnAi">✨ AI 生成说明</button>
     <button id="btnView">🎯 切聚焦</button>
+    <button id="btnSettings" class="ghost">⚙️ AI 设置</button>
     <span class="spacer"></span>
     <label class="badge"><input type="checkbox" id="selAll" class="selcb"> 全选</label>
     <button id="btnDelSel" class="ghost">🗑 删选中</button>
@@ -105,6 +122,41 @@
 </main>
 
 <div class="toast" id="toast"></div>
+
+<!-- AI 设置面板 -->
+<div id="settingsModal" class="modal" style="display:none">
+  <div class="modal-card">
+    <h3>⚙️ AI 接入设置</h3>
+    <label>接入方式</label>
+    <select id="cfgProvider">
+      <option value="ccswitch">CC Switch 跟随代理（默认，免配置）</option>
+      <option value="glm">智谱 GLM 直连（填 API Key）</option>
+      <option value="custom">自定义 API（OpenAI 兼容）</option>
+    </select>
+
+    <div id="cfgGlm" class="cfg-block">
+      <label>智谱 API Key <small>（open.bigmodel.cn 获取，模型 glm-4v-plus）</small></label>
+      <input id="cfgGlmKey" type="password" placeholder="填入 GLM API Key">
+      <small class="hint">当前：<span id="cfgGlmMask">未设置</span></small>
+    </div>
+
+    <div id="cfgCustom" class="cfg-block">
+      <label>API Base URL <small>（OpenAI 兼容）</small></label>
+      <input id="cfgBaseUrl" placeholder="https://api.example.com/v1">
+      <label>API Key</label>
+      <input id="cfgCustomKey" type="password" placeholder="填入 Key">
+      <small class="hint">当前：<span id="cfgCustomMask">未设置</span></small>
+      <label>模型名</label>
+      <input id="cfgModel" placeholder="gpt-4o / glm-4v-plus / qwen-vl-max …">
+    </div>
+
+    <div class="modal-actions">
+      <button id="cfgSave">💾 保存</button>
+      <button id="cfgClose" class="ghost">取消</button>
+    </div>
+    <p class="modal-note">说明：AI 会一次看完所有截图再为每步生成说明。Key 仅存在本机 config.json，不上传。</p>
+  </div>
+</div>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -278,14 +330,16 @@ async function syncRec(){ const s = await api("/api/state"); recorder.running = 
 $("sessions").onchange = (e)=>{ if(e.target.value) loadSession(e.target.value); };
 $("title").onchange = async ()=>{ if(current){ current.title = $("title").value; await save(); } };
 
-// ---------- AI（流式进度条）----------
-$("btnAi").onclick = async ()=>{
+// ---------- AI（看全图，可停止）----------
+let aiAbort = null;
+async function runAI(){
   if(!current || !current.steps.length){ toast("没有步骤"); return; }
-  $("btnAi").disabled = true;
   const total = current.steps.length;
+  aiAbort = new AbortController();
+  $("btnAi").textContent = "⏹ 停止生成";
   showProgress(0, total);
   try{
-    const resp = await fetch(`/api/ai/${current.id}?all=1`, {method:"POST"});
+    const resp = await fetch(`/api/ai/${current.id}`, {method:"POST", signal:aiAbort.signal});
     if(!resp.ok) throw new Error("HTTP "+resp.status);
     const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = "";
     while(true){
@@ -297,16 +351,56 @@ $("btnAi").onclick = async ()=>{
         const m = frame.match(/data:\s*([\s\S]*)/);
         if(!m) continue;
         let ev; try{ ev = JSON.parse(m[1]); }catch(_){ continue; }
-        if(ev.type === "done" && ev.description != null){
-          if(current.steps[ev.index]) current.steps[ev.index].description = ev.description;
+        if(ev.type === "done" && Array.isArray(ev.descriptions)){
+          ev.descriptions.forEach((d,i)=>{ if(current.steps[i]) current.steps[i].description = d; });
         }
         if(ev.total){ showProgress(ev.done || 0, ev.total); }
+        if(ev.type === "error"){ throw new Error(ev.error); }
       }
     }
     hideProgress(); render();
     toast("✅ AI 说明已生成");
-  }catch(e){ hideProgress(); toast("❌ "+e.message); }
-  $("btnAi").disabled = false;
+  }catch(e){
+    hideProgress();
+    if(e.name === "AbortError"){ toast("已停止"); }
+    else { toast("❌ "+e.message); }
+  }
+  $("btnAi").textContent = "✨ AI 生成说明";
+  aiAbort = null;
+}
+$("btnAi").onclick = ()=>{
+  if(aiAbort){ aiAbort.abort(); }   // 生成中→停止
+  else { runAI(); }
+};
+
+// ---------- AI 设置面板 ----------
+function toggleCfgBlocks(){
+  const p = $("cfgProvider").value;
+  $("cfgGlm").style.display = p === "glm" ? "block" : "none";
+  $("cfgCustom").style.display = p === "custom" ? "block" : "none";
+}
+$("btnSettings").onclick = async ()=>{
+  const c = await api("/api/config");
+  $("cfgProvider").value = c.provider;
+  $("cfgGlmMask").textContent = c.glm_key_set ? c.glm_key_mask : "未设置";
+  $("cfgCustomMask").textContent = c.custom_key_set ? "已设置" : "未设置";
+  $("cfgGlmKey").value = ""; $("cfgCustomKey").value = "";
+  $("cfgBaseUrl").value = c.custom_base; $("cfgModel").value = c.custom_model;
+  toggleCfgBlocks();
+  $("settingsModal").style.display = "flex";
+};
+$("cfgProvider").onchange = toggleCfgBlocks;
+$("cfgClose").onclick = ()=> $("settingsModal").style.display = "none";
+$("cfgSave").onclick = async ()=>{
+  const body = { provider: $("cfgProvider").value };
+  if($("cfgGlmKey").value) body.glm_key = $("cfgGlmKey").value;
+  body.custom_base = $("cfgBaseUrl").value.trim();
+  if($("cfgCustomKey").value) body.custom_key = $("cfgCustomKey").value;
+  body.custom_model = $("cfgModel").value.trim();
+  try{ await api("/api/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); }
+  catch(e){ toast("❌ "+e.message); return; }
+  $("settingsModal").style.display = "none";
+  toast("✅ 设置已保存");
 };
 
 // ---------- 视图切换 / 导出 ----------

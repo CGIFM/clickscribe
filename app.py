@@ -133,34 +133,69 @@ def image(sid, fname):
     )
 
 
-# ---------------------------------------------------------------- AI 说明（流式进度）
+# ---------------------------------------------------------------- AI 配置
+def _mask(secret: str) -> str:
+    if not secret:
+        return ""
+    return (secret[:4] + "***" + secret[-4:]) if len(secret) > 8 else "***"
+
+
+@app.route("/api/config")
+def get_config():
+    c = ai_writer.load_config()
+    return jsonify({
+        "provider": c["provider"],
+        "glm_key_set": bool(c.get("glm_key")),
+        "glm_key_mask": _mask(c.get("glm_key", "")),
+        "custom_base": c.get("custom_base", ""),
+        "custom_key_set": bool(c.get("custom_key")),
+        "custom_model": c.get("custom_model", ""),
+    })
+
+
+@app.route("/api/config", methods=["POST"])
+def set_config():
+    body = request.get_json(force=True) or {}
+    c = ai_writer.load_config()
+    if body.get("provider"):
+        c["provider"] = body["provider"]
+    if body.get("glm_key"):
+        c["glm_key"] = body["glm_key"]          # 空值不覆盖，保留旧 key
+    if "custom_base" in body:
+        c["custom_base"] = body["custom_base"]
+    if body.get("custom_key"):
+        c["custom_key"] = body["custom_key"]
+    if "custom_model" in body:
+        c["custom_model"] = body["custom_model"]
+    ai_writer.save_config(c)
+    return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------- AI 说明（看全图，流式可中断）
 def _sse(d: dict) -> str:
     return "data: " + json.dumps(d, ensure_ascii=False) + "\n\n"
 
 
 @app.route("/api/ai/<sid>", methods=["POST"])
 def ai_all(sid):
-    """流式生成步骤说明：每步 yield 进度事件，前端实时显示进度条。"""
+    """一次把所有截图发给 AI（看全图理解流程），返回每步说明；前端可中断。"""
     data = _load_or_404(sid)
-    force_all = request.args.get("all") == "1"
+    paths = [store.image_path(sid, s["screenshot"]) for s in data["steps"] if s.get("screenshot")]
 
     def gen():
-        total = len(data["steps"])
+        total = len(paths)
         yield _sse({"type": "start", "total": total, "done": 0})
-        for i, step in enumerate(data["steps"]):
-            if not force_all and step.get("description"):
-                yield _sse({"type": "skip", "index": i, "done": i + 1, "total": total})
-                continue
-            path = store.image_path(sid, step["screenshot"])
-            try:
-                step["description"] = ai_writer.describe(path)
-                store.save(sid, data)
-                yield _sse({"type": "done", "index": i, "done": i + 1,
-                            "total": total, "description": step["description"]})
-            except Exception as exc:  # 某一步失败不阻断其余
-                yield _sse({"type": "error", "index": i, "done": i + 1,
-                            "total": total, "error": str(exc)})
-        yield _sse({"type": "finish", "total": total, "done": total})
+        try:
+            descs = ai_writer.describe_all(paths)
+            for i, d in enumerate(descs):
+                if i < len(data["steps"]):
+                    data["steps"][i]["description"] = d
+            store.save(sid, data)
+            yield _sse({"type": "done", "total": total, "done": total, "descriptions": descs})
+        except GeneratorExit:
+            raise  # 前端中断：不保存
+        except Exception as exc:
+            yield _sse({"type": "error", "error": str(exc)})
 
     return Response(stream_with_context(gen()), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
