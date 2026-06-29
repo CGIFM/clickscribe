@@ -72,6 +72,7 @@
     <select id="sessions"></select>
     <button class="record" id="btnRecord">⏺ 开始录制</button>
     <button id="btnAi">✨ AI 生成说明</button>
+    <button id="btnView">🎯 切聚焦</button>
     <div class="spacer"></div>
     <span class="badge" id="countBadge">0 步</span>
     <button id="btnMd">⬇ Markdown</button>
@@ -99,6 +100,7 @@
 const $ = (id) => document.getElementById(id);
 let current = null;          // 当前会话数据
 let pollTimer = null;
+let viewMode = "full";       // 图片查看模式：full 全屏 / crop 聚焦裁切
 
 function toast(msg){
   const t = $("toast"); t.textContent = msg; t.classList.add("show");
@@ -162,7 +164,7 @@ function render(){
         <button class="icon-btn" data-act="down" ${i===current.steps.length-1?'disabled':''}>↓</button>
         <button class="icon-btn" data-act="del">✕</button>
       </div>
-      <img src="/api/image/${current.id}/${encodeURIComponent(st.screenshot)}" loading="lazy">
+      <img src="/api/image/${current.id}/${encodeURIComponent(st.screenshot)}?mode=${viewMode}" loading="lazy">
       <textarea rows="2" placeholder="这一步的说明…（点上方 ✨ AI 生成说明 可自动填写）">${escapeHtml(st.description||'')}</textarea>`;
     const titleInp = card.querySelector(".stitle");
     const descTa = card.querySelector("textarea");
@@ -258,6 +260,13 @@ $("btnAi").onclick = async ()=>{
 $("btnMd").onclick  = ()=>current && (location.href=`/api/export/${current.id}/md`);
 $("btnHtml").onclick= ()=>current && (location.href=`/api/export/${current.id}/html`);
 $("btnJson").onclick= ()=>current && (location.href=`/api/export/${current.id}/json`);
+
+// ---------- 视图切换（全屏 / 聚焦裁切）----------
+$("btnView").onclick = ()=>{
+  viewMode = viewMode === "full" ? "crop" : "full";
+  $("btnView").textContent = viewMode === "full" ? "🎯 切聚焦" : "🔲 切全屏";
+  render();
+};
 $("btnDel").onclick = async ()=>{
   if(!current){ toast("没有可删除的会话"); return; }
   if(!confirm("删除当前会话？此操作不可撤销。")) return;

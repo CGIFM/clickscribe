@@ -5,14 +5,13 @@
 """
 from __future__ import annotations
 
-import io
 import os
 import time
 import zipfile
 
 from flask import Flask, abort, jsonify, render_template, request, send_file
 
-from clickscribe import ai_writer, exporter, store
+from clickscribe import ai_writer, annotator, exporter, store
 from clickscribe.recorder import Recorder
 
 app = Flask(__name__)
@@ -104,24 +103,7 @@ def delete_session(sid):
     return jsonify({"ok": True})
 
 
-# ---------------------------------------------------------------- 图片（带点击红圈标注）
-def _annotated(path: str, x: int, y: int) -> io.BytesIO:
-    from PIL import Image, ImageDraw
-
-    img = Image.open(path).convert("RGBA")
-    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    d = ImageDraw.Draw(overlay)
-    r = max(18, min(img.size) // 38)
-    w = max(4, r // 4)
-    d.ellipse([x - r, y - r, x + r, y + r], outline=(245, 63, 63, 255), width=w)
-    d.ellipse([x - 5, y - 5, x + 5, y + 5], fill=(245, 63, 63, 255))
-    out = Image.alpha_composite(img, overlay).convert("RGB")
-    buf = io.BytesIO()
-    out.save(buf, "JPEG", quality=82)
-    buf.seek(0)
-    return buf
-
-
+# ---------------------------------------------------------------- 图片（橙色光圈 + 鼠标，支持全屏 / 聚焦裁切）
 @app.route("/api/image/<sid>/<fname>")
 def image(sid, fname):
     data = store.load(sid)
@@ -129,9 +111,15 @@ def image(sid, fname):
     path = store.image_path(sid, fname)
     if not os.path.exists(path):
         abort(404)
-    if step and request.args.get("raw") != "1":
-        return send_file(_annotated(path, step["x"], step["y"]), mimetype="image/jpeg")
-    return send_file(path, mimetype="image/png")
+    if request.args.get("raw") == "1" or not step:
+        return send_file(path, mimetype="image/png")
+    mode = request.args.get("mode", "full")
+    if mode not in ("full", "crop"):
+        mode = "full"
+    return send_file(
+        annotator.render(path, step["x"], step["y"], mode=mode),
+        mimetype="image/jpeg",
+    )
 
 
 # ---------------------------------------------------------------- AI 说明

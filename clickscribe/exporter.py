@@ -1,17 +1,19 @@
-"""把会话导出为 Markdown / HTML / JSON（后续可加 PDF/DOCX/PPTX）。"""
+"""把会话导出为 Markdown / HTML / JSON。
+
+导出的图片带橙色光圈 + 鼠标光标标注（与编辑器一致）。
+"""
 from __future__ import annotations
 
 import base64
 import json
 import os
-import shutil
 
-from . import store
+from . import annotator, store
 
 
-def _img_b64(path: str) -> str:
-    with open(path, "rb") as fh:
-        return base64.b64encode(fh.read()).decode()
+def _annotated_b64(path: str, x: int, y: int, mode: str = "full") -> str:
+    buf = annotator.render(path, x, y, mode=mode)
+    return base64.b64encode(buf.getvalue()).decode()
 
 
 def to_markdown(session: dict, out_dir: str) -> str:
@@ -27,8 +29,11 @@ def to_markdown(session: dict, out_dir: str) -> str:
         lines.append("")
         src = store.image_path(sid, step["screenshot"])
         if os.path.exists(src):
-            shutil.copy2(src, os.path.join(img_dir, step["screenshot"]))
-            lines.append(f"![第{i}步](images/{step['screenshot']})")
+            out_name = f"step_{i:03d}.jpg"
+            buf = annotator.render(src, step["x"], step["y"], mode="full")
+            with open(os.path.join(img_dir, out_name), "wb") as fh:
+                fh.write(buf.getvalue())
+            lines.append(f"![第{i}步](images/{out_name})")
             lines.append("")
         if desc:
             lines.append(desc)
@@ -48,13 +53,13 @@ def to_html(session: dict, out_path: str) -> str:
         "<style>",
         "body{font-family:-apple-system,'PingFang SC',sans-serif;max-width:780px;",
         "margin:40px auto;padding:0 20px;color:#222;background:#fafafa}",
-        "h1{border-bottom:3px solid #4f8cff;padding-bottom:10px;color:#1a1a1a}",
+        "h1{border-bottom:3px solid #ff9200;padding-bottom:10px;color:#1a1a1a}",
         ".step{margin:28px 0;padding:22px;border:1px solid #e3e8ef;border-radius:14px;background:#fff;",
         "box-shadow:0 1px 3px rgba(0,0,0,.04)}",
-        ".step h2{margin-top:0;color:#4f8cff;font-size:18px}",
+        ".step h2{margin-top:0;color:#cc6a00;font-size:18px}",
         ".step img{max-width:100%;border-radius:8px;border:1px solid #e3e8ef;display:block}",
         ".desc{color:#444;line-height:1.7;margin-top:12px}",
-        ".num{display:inline-block;background:#4f8cff;color:#fff;width:26px;height:26px;border-radius:50%;",
+        ".num{display:inline-block;background:#ff9200;color:#fff;width:26px;height:26px;border-radius:50%;",
         "text-align:center;line-height:26px;margin-right:8px;font-size:14px}",
         "</style></head><body>",
         f"<h1>{session['title']}</h1>",
@@ -65,7 +70,8 @@ def to_html(session: dict, out_path: str) -> str:
         src = store.image_path(sid, step["screenshot"])
         img_tag = ""
         if os.path.exists(src):
-            img_tag = f"<img src='data:image/png;base64,{_img_b64(src)}' alt='第{i}步截图'>"
+            b64 = _annotated_b64(src, step["x"], step["y"], mode="full")
+            img_tag = f"<img src='data:image/jpeg;base64,{b64}' alt='第{i}步截图'>"
         parts.append(
             f"<div class='step'><h2><span class='num'>{i}</span>{title}</h2>"
             f"{img_tag}<p class='desc'>{desc}</p></div>"

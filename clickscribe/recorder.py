@@ -31,8 +31,26 @@ RECORDING_DIR = os.path.join("sessions", "_recording")
 
 
 def _screenshot(path: str) -> None:
-    """静音截取整屏到 path。"""
-    subprocess.run(["screencapture", "-x", path], check=True)
+    """静音截取整屏，并缩放到屏幕逻辑 points（与 Quartz 鼠标坐标对齐）。
+
+    retina 屏 screencapture 默认输出 2x 像素，而 CGEventGetLocation 返回
+    1x points；不缩放会导致标注画偏。
+    """
+    tmp = path + ".raw"
+    subprocess.run(["screencapture", "-x", tmp], check=True)
+    try:
+        from PIL import Image
+        from AppKit import NSScreen
+
+        img = Image.open(tmp)
+        factor = NSScreen.mainScreen().backingScaleFactor()
+        if factor and factor != 1:
+            w, h = img.size
+            img = img.resize((int(w / factor), int(h / factor)), Image.LANCZOS)
+        img.save(path)
+        os.remove(tmp)
+    except Exception:
+        os.replace(tmp, path)
 
 
 class Recorder:
